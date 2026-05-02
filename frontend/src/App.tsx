@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import './App.css';
 
@@ -20,6 +20,15 @@ interface Message {
   sentAt: string;
 }
 
+interface Booking {
+  id: string;
+  pnrCode: string;
+  flightId: string;
+  status: string;
+  totalPrice: number;
+  expiresAt: string;
+}
+
 // Ініціалізуємо сокет (поки без підключення)
 const socket: Socket = io('http://localhost:3000', { autoConnect: false });
 
@@ -36,12 +45,27 @@ function App() {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  // Стани для бронювань
+  const [myBookings, setMyBookings] = useState<Booking[]>([]);
   // Стани для чату
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [receiverId, setReceiverId] = useState(''); // З ким спілкуємось
 
 
+
+  const fetchMyBookings = useCallback(async () => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/bookings?userId=${userId}`);
+      const data = await res.json();
+      setMyBookings(data);
+    } catch (error) {
+      console.error('Помилка завантаження бронювань:', error);
+    }
+  }, [userId]);
 
   // Підключення до WS після логіну
   useEffect(() => {
@@ -81,6 +105,7 @@ function App() {
       const res = await fetch(url);
       const data = await res.json();
       setFlights(data);
+      setCurrentPage(1); // Reset to first page on new search
     } catch (error) {
       console.error('Помилка пошуку:', error);
     }
@@ -99,12 +124,14 @@ function App() {
 
       if (res.ok) {
         // Якщо бекенд пустив — заходимо
+        await fetchMyBookings();
         setIsLoggedIn(true);
       } else {
         const err = await res.json();
         setAuthError(err.error);
       }
     } catch (error) {
+      console.error('Помилка логіну:', error);
       setAuthError('Помилка з\'єднання з сервером');
     }
   };
@@ -121,11 +148,55 @@ function App() {
         const data = await res.json();
         setBookingStatus(`Успіх! PNR код: ${data.pnrCode}`);
         fetchFlights(); //оновлюємо список, щоб побачити зміну кількості місць
+        fetchMyBookings(); // оновлюємо список бронювань
       } else {
-        const err = await res.json();
-        setBookingStatus(`Помилка: ${err.error}`);
+        try {
+          const err = await res.json();
+          setBookingStatus(`Помилка бронювання: ${err.error || 'Невідома помилка'}`);
+        } catch {
+          setBookingStatus('Помилка бронювання: Невідома помилка');
+        }
       }
     } catch (error) {
+      console.error('Помилка бронювання:', error);
+      setBookingStatus('Помилка з\'єднання з сервером');
+    }
+  };
+
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setBookingStatus('Бронювання скасовано');
+        fetchMyBookings();
+      } else {
+        const err = await res.json();
+        setBookingStatus(`Не вдалося скасувати бронювання: ${err.error || 'Невідома помилка'}`);
+      }
+    } catch (error) {
+      console.error('Помилка скасування бронювання:', error);
+      setBookingStatus('Помилка з\'єднання з сервером');
+    }
+  };
+
+  const deleteBooking = async (bookingId: string) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/bookings/${bookingId}?force=true`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setBookingStatus('Бронювання видалено');
+        fetchMyBookings();
+      } else {
+        const err = await res.json();
+        setBookingStatus(`Не вдалося видалити бронювання: ${err.error || 'Невідома помилка'}`);
+      }
+    } catch (error) {
+      console.error('Помилка видалення бронювання:', error);
       setBookingStatus('Помилка з\'єднання з сервером');
     }
   };
@@ -168,6 +239,11 @@ function App() {
   }
 
   // Рендер головного екрану (Дашборд)
+  // Pagination calculations
+  const totalPages = Math.ceil(flights.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedFlights = flights.slice(startIndex, startIndex + itemsPerPage);
+
   return (
       <div className="dashboard">
         <header>
@@ -176,7 +252,7 @@ function App() {
 
         <div className="main-content">
           {/* ЛІВА ПАНЕЛЬ: Пошук і бронювання */}
-          <section className="booking-section">
+          <section className="booking-section" style={{ width: '70%', display: 'flex', flexDirection: 'column' }}>
             <h2>Пошук авіарейсів</h2>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
@@ -198,7 +274,7 @@ function App() {
             {bookingStatus && <div className="status-badge">{bookingStatus}</div>}
 
             <div className="flight-list">
-              {flights.map((flight) => (
+              {paginatedFlights.map((flight) => (
                   <div key={flight.id} className="flight-card">
                     <h3>{flight.airline}</h3>
                     <p>{flight.origin} ➔ {flight.destination}</p>
@@ -212,37 +288,95 @@ function App() {
                   </div>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '20px' }}>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                  disabled={currentPage === 1}
+                >
+                  Попередня
+                </button>
+                <span>Сторінка {currentPage} з {totalPages}</span>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                  disabled={currentPage === totalPages}
+                >
+                  Наступна
+                </button>
+              </div>
+            )}
+
           </section>
 
-          {/*ПРАВА ПАНЕЛЬ: Чат */}
-          <section className="chat-section">
-            <h2>Чат з підтримкою</h2>
-            <input
-                type="text"
-                placeholder="ID співрозмовника (напр. Agent1)"
-                value={receiverId}
-                onChange={(e) => setReceiverId(e.target.value)}
-                className="receiver-input"
-            />
-
-            <div className="chat-window">
-              {messages.filter(m => m.senderId === receiverId || m.receiverId === receiverId).map((msg, idx) => (
-                  <div key={idx} className={`message ${msg.senderId === userId ? 'my-message' : 'their-message'}`}>
-                    <strong>{msg.senderId}: </strong> {msg.text}
-                  </div>
-              ))}
-            </div>
-
-            <form onSubmit={sendMessage} className="chat-form">
+          {/*ПРАВА ПАНЕЛЬ: Чат та бронювання */}
+          <section className="right-panel" style={{ width: '30%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <section className="chat-section" style={{ height: '50%', display: 'flex', flexDirection: 'column' }}>
+              <h2>Чат з підтримкою</h2>
               <input
                   type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Напишіть повідомлення..."
+                  placeholder="ID співрозмовника (напр. Agent1)"
+                  value={receiverId}
+                  onChange={(e) => setReceiverId(e.target.value)}
+                  className="receiver-input"
               />
-              <button type="submit">▶</button>
-            </form>
+
+              <div className="chat-window" style={{ flex: 1, overflowY: 'auto' }}>
+                {messages.filter(m => m.senderId === receiverId || m.receiverId === receiverId).map((msg, idx) => (
+                    <div key={idx} className={`message ${msg.senderId === userId ? 'my-message' : 'their-message'}`}>
+                      <strong>{msg.senderId}: </strong> {msg.text}
+                    </div>
+                ))}
+              </div>
+
+              <form onSubmit={sendMessage} className="chat-form">
+                <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Напишіть повідомлення..."
+                />
+                <button type="submit">▶</button>
+              </form>
+            </section>
+
+            <section className="bookings-section" style={{ height: '50%', display: 'flex', flexDirection: 'column' }}>
+              <h2>Мої бронювання</h2>
+              <div className="bookings-list" style={{ flex: 1, overflowY: 'auto' }}>
+                {myBookings.length === 0 ? (
+                  <p>Немає бронювань</p>
+                ) : (
+                  myBookings.map((booking) => (
+                    <div key={booking.id} className="booking-item" style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
+                      <p><strong>PNR:</strong> {booking.pnrCode}</p>
+                      <p><strong>Рейс:</strong> {booking.flightId}</p>
+                      <p><strong>Статус:</strong> {booking.status}</p>
+                      <p><strong>Ціна:</strong> ${booking.totalPrice}</p>
+                      <p><strong>Дійсний до:</strong> {new Date(booking.expiresAt).toLocaleString()}</p>
+                      {booking.status !== 'CANCELLED' ? (
+                        <button
+                          onClick={() => cancelBooking(booking.id)}
+                          style={{ marginTop: '10px', alignSelf: 'flex-start' }}
+                        >
+                          Скасувати бронювання
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => deleteBooking(booking.id)}
+                          style={{ marginTop: '10px', alignSelf: 'flex-start', backgroundColor: '#f87171' }}
+                        >
+                          Видалити бронювання
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           </section>
+
+
         </div>
       </div>
   );

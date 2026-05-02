@@ -8,6 +8,7 @@ export interface CreateBookingDTO {
 
 export interface BookingDTO {
     id: string;
+    userId: string;
     pnrCode: string;
     flightId: string;
     status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
@@ -33,5 +34,13 @@ export class BookingRepository {
         if (booking) {
             booking.status = status;
         }
+    }
+
+    async deleteById(id: string | string[]): Promise<void> {
+        this.bookings = this.bookings.filter((booking) => booking.id !== id);
+    }
+
+    async findByUserId(userId: string): Promise<BookingDTO[]> {
+        return this.bookings.filter(b => b.userId === userId);
     }
 }
