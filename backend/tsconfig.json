@@ -4,12 +4,11 @@
     // File Layout
     // "rootDir": "./src",
     // "outDir": "./dist",
-
+    "types": ["jest"],
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],

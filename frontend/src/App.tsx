@@ -26,6 +26,8 @@ const socket: Socket = io('http://localhost:3000', { autoConnect: false });
 function App() {
   // Стани для авторизації
   const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Стани для рейсів
@@ -38,6 +40,8 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [receiverId, setReceiverId] = useState(''); // З ким спілкуємось
+
+
 
   // Підключення до WS після логіну
   useEffect(() => {
@@ -64,10 +68,6 @@ function App() {
   }, [isLoggedIn, userId]);
 
   // --- Функції API ---
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (userId.trim()) setIsLoggedIn(true);
-  };
 
   const fetchFlights = async () => {
     try {
@@ -83,6 +83,29 @@ function App() {
       setFlights(data);
     } catch (error) {
       console.error('Помилка пошуку:', error);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: userId, password }),
+      });
+
+      if (res.ok) {
+        // Якщо бекенд пустив — заходимо
+        setIsLoggedIn(true);
+      } else {
+        const err = await res.json();
+        setAuthError(err.error);
+      }
+    } catch (error) {
+      setAuthError('Помилка з\'єднання з сервером');
     }
   };
 
@@ -123,15 +146,22 @@ function App() {
   if (!isLoggedIn) {
     return (
         <div className="login-screen">
-          <h2>Система бронювання</h2>
           <form onSubmit={handleLogin}>
+            <h2>Вхід у систему</h2>
             <input
                 type="text"
-                placeholder="Введіть свій ID (напр. Tourist1 або Agent1)"
+                placeholder="Логін (напр. Tourist1)"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
             />
+            <input
+                type="password"
+                placeholder="Пароль (password123)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+            />
             <button type="submit">Увійти</button>
+            {authError && <p style={{color: '#ef4444', marginTop: '10px'}}>{authError}</p>}
           </form>
         </div>
     );

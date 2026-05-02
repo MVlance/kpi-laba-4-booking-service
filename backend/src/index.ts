@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import bookingRouter from './modules/booking/controller';
 import { setupMessagingGateway } from './modules/messaging/gateway';
+import authRouter from './modules/auth/controller';
 import searchRouter from './modules/search/controller';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -26,6 +27,7 @@ app.use(express.json()); //parsing JSON body
 //routing (local API Gateway)
 app.use('/api/bookings', bookingRouter);
 app.use('/api/flights', searchRouter);
+app.use('/api/auth', authRouter);
 
 //base endpoint for checking
 app.get('/api/health', (req: Request, res: Response) => {
