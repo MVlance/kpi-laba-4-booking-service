@@ -96,6 +96,7 @@ header h1 {
   padding: 0 20px;
   max-width: 1200px;
   margin: 0 auto;
+  align-items: flex-start;
 }
 
 .booking-section, .chat-section {
@@ -168,14 +169,15 @@ h2 {
   box-sizing: border-box;
 }
 
+
 .chat-window {
-  flex-grow: 1;
   background-color: #0f172a;
   border: 1px solid #334155;
   border-radius: 8px;
   margin: 0 0 15px 0;
   padding: 15px;
-  height: 350px;
+  height: 400px;
+  min-height: 400px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
