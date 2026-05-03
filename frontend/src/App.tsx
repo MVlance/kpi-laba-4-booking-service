@@ -39,6 +39,7 @@ function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
   // Стани для рейсів
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -92,6 +93,23 @@ function App() {
     }
   }, [isLoggedIn, userId]);
 
+  // --- Helper function for authenticated fetch ---
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (options.headers && typeof options.headers === 'object') {
+      Object.assign(headers, options.headers);
+    }
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return fetch(url, { ...options, headers });
+  };
+
   // --- Функції API ---
 
   const fetchFlights = async () => {
@@ -124,7 +142,12 @@ function App() {
       });
 
       if (res.ok) {
-        // Якщо бекенд пустив — заходимо
+        const data = await res.json();
+        // Store the token
+        if (data.token) {
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+        }
         await fetchMyBookings();
         setIsLoggedIn(true);
       } else {
@@ -139,9 +162,8 @@ function App() {
 
   const bookFlight = async (flightId: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+      const res = await authenticatedFetch(`${API_BASE_URL}/api/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, flightId, seatClass: 'ECONOMY', serviceIds: [] }),
       });
 
@@ -166,7 +188,7 @@ function App() {
 
   const cancelBooking = async (bookingId: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+      const res = await authenticatedFetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
         method: 'DELETE',
       });
 
@@ -185,7 +207,7 @@ function App() {
 
   const deleteBooking = async (bookingId: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}?force=true`, {
+      const res = await authenticatedFetch(`${API_BASE_URL}/api/bookings/${bookingId}?force=true`, {
         method: 'DELETE',
       });
 
