@@ -47,7 +47,7 @@ const authMiddleware = (req: Request, res: Response, next: any) => {
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 const httpServer = createServer(app);
 

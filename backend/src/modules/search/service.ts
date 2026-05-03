@@ -1,7 +1,7 @@
 import { FlightRepository, type FlightDTO } from './repository';
 
 export class FlightSearchService {
-    constructor(private flightRepo: FlightRepository) {}
+    constructor(private readonly flightRepo: FlightRepository) {}
 
     async searchFlights(origin?: string, destination?: string): Promise<FlightDTO[]> {
         let flights = await this.flightRepo.findAll();

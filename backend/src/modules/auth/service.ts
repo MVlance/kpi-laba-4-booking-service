@@ -2,12 +2,12 @@ import { AuthRepository } from './repository';
 import { v4 as uuidv4 } from 'uuid';
 
 export class AuthService {
-    constructor(private authRepo: AuthRepository) {}
+    constructor(private readonly authRepo: AuthRepository) {}
 
     async login(username: string, password: string) {
         const user = await this.authRepo.findByUsername(username);
 
-        if (!user || user.password !== password) {
+        if (!user || user?.password !== password) {
             throw new Error('Невірний логін або пароль');
         }
 

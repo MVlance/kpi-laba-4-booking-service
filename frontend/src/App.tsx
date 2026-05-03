@@ -30,7 +30,8 @@ interface Booking {
 }
 
 // Ініціалізуємо сокет (поки без підключення)
-const socket: Socket = io('http://localhost:3000', { autoConnect: false });
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:10000';
+const socket: Socket = io(API_BASE_URL, { autoConnect: false });
 
 function App() {
   // Стани для авторизації
@@ -59,7 +60,7 @@ function App() {
 
   const fetchMyBookings = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/bookings?userId=${userId}`);
+      const res = await fetch(`${API_BASE_URL}/api/bookings?userId=${userId}`);
       const data = await res.json();
       setMyBookings(data);
     } catch (error) {
@@ -100,7 +101,7 @@ function App() {
       if (origin) query.append('origin', origin.trim());
       if (destination) query.append('destination', destination.trim());
 
-      const url = `http://localhost:3000/api/flights/search?${query.toString()}`;
+      const url = `${API_BASE_URL}/api/flights/search?${query.toString()}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -116,7 +117,7 @@ function App() {
     setAuthError('');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: userId, password }),
@@ -138,7 +139,7 @@ function App() {
 
   const bookFlight = async (flightId: string) => {
     try {
-      const res = await fetch('http://localhost:3000/api/bookings', {
+      const res = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, flightId, seatClass: 'ECONOMY', serviceIds: [] }),
@@ -165,7 +166,7 @@ function App() {
 
   const cancelBooking = async (bookingId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/bookings/${bookingId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
         method: 'DELETE',
       });
 
@@ -184,7 +185,7 @@ function App() {
 
   const deleteBooking = async (bookingId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/bookings/${bookingId}?force=true`, {
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}?force=true`, {
         method: 'DELETE',
       });
 

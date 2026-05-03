@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { flightRepositoryInstance } from '../search/repository'; // Підключаємо базу рейсів!
 
 export class BookingService {
-    constructor(private bookingRepo: BookingRepository) {}
+    constructor(private readonly bookingRepo: BookingRepository) {}
 
     async createBooking(dto: CreateBookingDTO): Promise<BookingDTO> {
         // 1. searching for a flight

@@ -8,7 +8,7 @@ export interface SendMessageDTO {
 }
 
 export class MessagingService {
-    constructor(private repository: MessagingRepository) {}
+    constructor(private readonly repository: MessagingRepository) {}
 
     async sendMessage(dto: SendMessageDTO): Promise<MessageDTO> {
         const message: MessageDTO = {
