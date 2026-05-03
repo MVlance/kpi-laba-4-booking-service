@@ -29,8 +29,16 @@ interface Booking {
   expiresAt: string;
 }
 
+type WindowWithApi = Window & {
+  __API_BASE_URL__?: string;
+  VITE_API_URL?: string;
+};
+
 // Ініціалізуємо сокет (поки без підключення)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:10000';
+const win = window as WindowWithApi;
+const runtimeApiUrl = win.__API_BASE_URL__ || win.VITE_API_URL;
+const API_BASE_URL = runtimeApiUrl || import.meta.env.VITE_API_URL || 'http://localhost:10000';
+console.log('API_BASE_URL:', API_BASE_URL);
 const socket: Socket = io(API_BASE_URL, { autoConnect: false });
 
 function App() {
